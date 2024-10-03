@@ -8,10 +8,8 @@ RATE = 16000
 CHUNK = 512
 
 # Server settings
-CLIENT_IP = '192.168.1.30'  # Replace with your server's IP
-CLIENT_PORT = 5001
-SERVER_IP = '192.168.1.167'
-SERVER_PORT = 5002
+SERVER_IP = '192.168.1.30'  # Replace with your server's IP
+SERVER_PORT = 5001
 
 # Initialize PyAudio
 audio = pyaudio.PyAudio()
@@ -23,12 +21,7 @@ stream = audio.open(format=pyaudio.paInt16, channels=1,
 
 # Create socket
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client_socket.connect((CLIENT_IP, CLIENT_PORT))
-
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.bind((SERVER_IP, SERVER_PORT))
-server_socket.listen(1)
-
+client_socket.connect((SERVER_IP, SERVER_PORT))
 
 print("Sending audio...")
 

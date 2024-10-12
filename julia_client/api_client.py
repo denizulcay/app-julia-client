@@ -1,65 +1,23 @@
-import wave
-from io import BytesIO
+from time import sleep
 
-import pyaudio
-import webrtcvad
 import requests
-from pydub import AudioSegment
-from pydub.playback import play
 
-from julia_client.microphone import MicrophoneStream
-
+from julia_client.microphone_stream import MicrophoneStream
+from julia_client.speech_detection import SpeechDetectionClient
+from julia_client.utils import play_wav
 
 SAMPLE_RATE = 16000
 FRAME_LENGTH = 512
+SERVER_IP = '192.168.1.30'
+SERVER_IP = '127.0.0.1'
+SERVER_PORT = 5000
 
+detect_client = SpeechDetectionClient()
 
-def play_wav(audio: bytes):
-    segment = AudioSegment.from_file(BytesIO(audio), format="wav")
-    play(segment)
-
-
-def extent_bytes(first, second):
-    arr = bytearray()
-    arr.extend(first)
-    arr.extend(second)
-
-    return bytes(arr)
-
-
-vad = webrtcvad.Vad()
-vad.set_mode(3)
-speech = b''
-speech_ctr = 0
-speaking = False
-while True:
-    with MicrophoneStream(sample_rate=SAMPLE_RATE, frame_length=FRAME_LENGTH) as stream:
-        for chunk in stream.generator():
-            speech_chunk = chunk[:960]
-            is_speech = vad.is_speech(speech_chunk, SAMPLE_RATE)
-            if is_speech:
-                speech_ctr = 0
-                speaking = True
-                speech = extent_bytes(speech, chunk)
-                print("Speech")
-            else:
-                speech_ctr += 1
-                speech = extent_bytes(speech, chunk)
-                print("Not speech")
-                print(speech_ctr)
-
-            if speaking and speech_ctr >= 30:
-                speaking = False
-                break
-
-        response = requests.post('http://127.0.0.1:5000/request', data=speech)
-        wf = wave.open("hey_julia.wav", 'wb')
-        wf.setnchannels(1)
-        wf.setsampwidth(stream._audio_interface.get_sample_size(pyaudio.paInt16))
-        wf.setframerate(16000)
-        wf.writeframes(speech)
-        wf.close()
-        if response.content:
+with MicrophoneStream(sample_rate=SAMPLE_RATE, frame_length=FRAME_LENGTH) as stream:
+    while True:
+        payload = detect_client.get_speech(stream.generator(), sample_rate=SAMPLE_RATE)
+        response = requests.post(f'http://{SERVER_IP}:{SERVER_PORT}/request', data=payload)
+        if response.status_code == 200:
             play_wav(response.content)
-        speech = b''
-        speech_ctr = 0
+            sleep(1)
